@@ -371,10 +371,11 @@ export default function App() {
       const resultBlob = await removeBackground(originalUrl, {
         model: modelType,
         proxyToWorker: true,
+        publicPath: `${window.location.origin}/model/`, // Self-hosts models and WebAssembly directly from Vercel!
         progress: (key: string, current: number, total: number) => {
           const loaded = Math.round((current / total) * 100);
           setProgressPercent(Math.min(30 + Math.round(loaded * 0.65), 95));
-          setProgressStatus(`Mengunduh modul AI: ${Math.round(loaded)}% (Satu kali saja)`);
+          setProgressStatus(`Memuat modul AI lokal: ${Math.round(loaded)}%`);
         }
       });
 
