@@ -159,7 +159,7 @@ export default function App() {
   const [comparisonValue, setComparisonValue] = useState<number>(50);
   
   // Model settings
-  const [modelType, setModelType] = useState<'isnet_quint8' | 'isnet_fp16'>('isnet_quint8');
+  const [modelType, setModelType] = useState<'small' | 'medium'>('small');
   
   // Local History
   const [history, setHistory] = useState<Array<{ id: string; original: string; processed: string; date: string }>>([]);
@@ -371,11 +371,11 @@ export default function App() {
       const resultBlob = await removeBackground(originalUrl, {
         model: modelType,
         proxyToWorker: true,
-        publicPath: `${window.location.origin}/model/`, // Self-hosts models and WebAssembly directly from Vercel!
+        // publicPath: `${window.location.origin}/model/`, // Reverting to CDN for preview stability, enable this for Vercel production
         progress: (key: string, current: number, total: number) => {
           const loaded = Math.round((current / total) * 100);
           setProgressPercent(Math.min(30 + Math.round(loaded * 0.65), 95));
-          setProgressStatus(`Memuat modul AI lokal: ${Math.round(loaded)}%`);
+          setProgressStatus(`Memuat modul AI: ${Math.round(loaded)}%`);
         }
       });
 
@@ -605,9 +605,9 @@ export default function App() {
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
-                  onClick={() => setModelType('isnet_quint8')}
+                  onClick={() => setModelType('small')}
                   className={`flex-1 sm:flex-none text-xs px-4 py-2 rounded-xl border font-bold transition ${
-                    modelType === 'isnet_quint8'
+                    modelType === 'small'
                       ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
@@ -615,9 +615,9 @@ export default function App() {
                   Cepat (80MB)
                 </button>
                 <button
-                  onClick={() => setModelType('isnet_fp16')}
+                  onClick={() => setModelType('medium')}
                   className={`flex-1 sm:flex-none text-xs px-4 py-2 rounded-xl border font-bold transition ${
-                    modelType === 'isnet_fp16'
+                    modelType === 'medium'
                       ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
