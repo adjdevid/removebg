@@ -1345,26 +1345,35 @@ export default function App() {
       </main>
 
       {/* PUBLIC FOOTER */}
-      <footer className="mt-16 border-t border-slate-200/80 bg-white p-6 text-center text-xs text-slate-500 space-y-2 shadow-inner">
+      <footer className="mt-16 border-t border-slate-200/80 bg-white p-6 text-center text-xs text-slate-500 shadow-inner">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-left">
           <div className="flex items-center gap-3">
             <img 
               src="/logo.png" 
               alt="LatarKita" 
-              className="w-8 h-8 object-contain rounded-lg border border-slate-100 bg-white" 
+              className="w-8 h-8 object-contain rounded-lg border border-slate-100 bg-white shadow-xs" 
             />
             <div>
               <p className="font-extrabold text-slate-800 text-sm">LatarKita Studio AI</p>
-              <p className="text-slate-500 font-medium">Pemotong subjek foto instan kualitas HD bertenaga Remove.bg AI.</p>
+              <p className="text-slate-500 font-medium">Pemotong subjek foto instan kualitas HD bertenaga Remove.bg AI & Pollinations.ai.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-600">
-              Remove.bg Cloud Engine
-            </span>
-            <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-600">
-              Pollinations.ai Flux
-            </span>
+
+          <div className="flex flex-wrap items-center gap-3 md:gap-4">
+            <div className="flex items-center gap-2">
+              <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1 rounded-full text-slate-600">
+                Remove.bg Cloud
+              </span>
+              <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1 rounded-full text-slate-600">
+                Pollinations Flux
+              </span>
+            </div>
+            <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
+            <img 
+              src="/footer-logo.png" 
+              alt="LatarKita" 
+              className="h-6 md:h-7 w-auto object-contain opacity-85 hover:opacity-100 transition-opacity" 
+            />
           </div>
         </div>
       </footer>
