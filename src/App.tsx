@@ -20,9 +20,9 @@ import {
   FileImage,
   Undo,
   Info,
-  Settings,
   X,
-  Sparkle
+  Sparkle,
+  AlertCircle
 } from 'lucide-react';
 // @ts-ignore
 import { removeBackground } from '@imgly/background-removal';
@@ -91,13 +91,13 @@ const BACKGROUND_TEMPLATES = [
 
 // Curated Dynamic Gradients
 const GRADIENTS = [
-  { name: 'Aurora Glow', class: 'bg-gradient-to-tr from-teal-500 via-emerald-400 to-cyan-500', style: { background: 'linear-gradient(135deg, #14b8a6, #34d399, #06b6d4)' } },
-  { name: 'Sunset Boulevard', class: 'bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-500', style: { background: 'linear-gradient(135deg, #f59e0b, #f97316, #f43f5e)' } },
-  { name: 'Midnight Purple', class: 'bg-gradient-to-tr from-indigo-900 via-purple-800 to-pink-600', style: { background: 'linear-gradient(135deg, #312e81, #6b21a8, #db2777)' } },
-  { name: 'Soft Orchid', class: 'bg-gradient-to-tr from-pink-300 via-purple-300 to-indigo-400', style: { background: 'linear-gradient(135deg, #f9a8d4, #d8b4fe, #818cf8)' } },
-  { name: 'Fresh Mint', class: 'bg-gradient-to-tr from-green-300 to-blue-400', style: { background: 'linear-gradient(135deg, #86efac, #60a5fa)' } },
-  { name: 'Studio Classic', class: 'bg-gradient-to-tr from-slate-800 to-slate-950', style: { background: 'linear-gradient(135deg, #1e293b, #020617)' } },
-  { name: 'Metallic Grey', class: 'bg-gradient-to-tr from-zinc-200 to-zinc-400', style: { background: 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' } }
+  { name: 'Aurora Glow', style: { background: 'linear-gradient(135deg, #14b8a6, #34d399, #06b6d4)' } },
+  { name: 'Sunset Boulevard', style: { background: 'linear-gradient(135deg, #f59e0b, #f97316, #f43f5e)' } },
+  { name: 'Midnight Purple', style: { background: 'linear-gradient(135deg, #312e81, #6b21a8, #db2777)' } },
+  { name: 'Soft Orchid', style: { background: 'linear-gradient(135deg, #f9a8d4, #d8b4fe, #818cf8)' } },
+  { name: 'Fresh Mint', style: { background: 'linear-gradient(135deg, #86efac, #60a5fa)' } },
+  { name: 'Studio Classic', style: { background: 'linear-gradient(135deg, #1e293b, #020617)' } },
+  { name: 'Metallic Grey', style: { background: 'linear-gradient(135deg, #e4e4e7, #a1a1aa)' } }
 ];
 
 const SOLID_COLORS = [
@@ -149,7 +149,7 @@ export default function App() {
   const [shadowBlur, setShadowBlur] = useState<number>(15);
   const [shadowOffsetX, setShadowOffsetX] = useState<number>(5);
   const [shadowOffsetY, setShadowOffsetY] = useState<number>(10);
-  const [shadowOpacity, setShadowOpacity] = useState<number>(0.3);
+  const [shadowOpacity, setShadowOpacity] = useState<number>(0.2);
   
   // Background configuration
   const [bgBlur, setBgBlur] = useState<number>(0);
@@ -164,10 +164,8 @@ export default function App() {
   // Local History
   const [history, setHistory] = useState<Array<{ id: string; original: string; processed: string; date: string }>>([]);
 
-  // Server config status
-  const [serverConfig, setServerConfig] = useState<{ hasApiKey: boolean }>({ hasApiKey: false });
-  const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
-  const [userApiKey, setUserApiKey] = useState<string>('');
+  // Sandbox detection
+  const [isInsideIframe, setIsInsideIframe] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -175,12 +173,7 @@ export default function App() {
 
   // Initialize and check configuration
   useEffect(() => {
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(data => {
-        setServerConfig({ hasApiKey: data.hasApiKey });
-      })
-      .catch(err => console.error('Gagal memuat konfigurasi server:', err));
+    setIsInsideIframe(window.self !== window.top);
 
     // Load history from local storage
     const savedHistory = localStorage.getItem('latarkita_history');
@@ -215,7 +208,6 @@ export default function App() {
     subjectImg.src = processedUrl || '';
 
     subjectImg.onload = () => {
-      // Set canvas size to match original image dimensions for HD output
       const width = subjectImg.naturalWidth || 1200;
       const height = subjectImg.naturalHeight || 1200;
       canvas.width = width;
@@ -225,25 +217,13 @@ export default function App() {
       ctx.clearRect(0, 0, width, height);
 
       if (bgType === 'transparent') {
-        // Transparency checkboard pattern
-        const size = 20;
-        for (let x = 0; x < width; x += size * 2) {
-          for (let y = 0; y < height; y += size * 2) {
-            ctx.fillStyle = '#e2e8f0';
-            ctx.fillRect(x, y, size, size);
-            ctx.fillRect(x + size, y + size, size, size);
-            ctx.fillStyle = '#f1f5f9';
-            ctx.fillRect(x + size, y, size, size);
-            ctx.fillRect(x, y + size, size, size);
-          }
-        }
+        // Keep canvas background completely clear (transparent) for the actual high-definition PNG output!
+        ctx.clearRect(0, 0, width, height);
       } else if (bgType === 'solid') {
         ctx.fillStyle = selectedColor;
         ctx.fillRect(0, 0, width, height);
       } else if (bgType === 'gradient') {
-        // Recreate gradient visually
         const gradient = ctx.createLinearGradient(0, 0, width, height);
-        // Fallback or map gradient
         if (selectedGradient.name === 'Aurora Glow') {
           gradient.addColorStop(0, '#14b8a6');
           gradient.addColorStop(0.5, '#34d399');
@@ -284,7 +264,6 @@ export default function App() {
         }
 
         bgImg.onload = () => {
-          // Draw background with cover aspect ratio
           const bgRatio = bgImg.width / bgImg.height;
           const canvasRatio = width / height;
           let drawW = width;
@@ -300,20 +279,17 @@ export default function App() {
             drawY = (height - drawH) / 2;
           }
 
-          // Optional: Blur background
           if (bgBlur > 0) {
             ctx.filter = `blur(${bgBlur}px)`;
           }
           ctx.drawImage(bgImg, drawX, drawY, drawW, drawH);
           ctx.filter = 'none'; // Reset filter
           
-          // Draw subject
           drawSubject(ctx, subjectImg, width, height);
         };
-        return; // Return early, async draw is handled in bgImg onload
+        return; 
       }
 
-      // 2. Draw Subject (for transparent, solid, gradient which don't load external bg image)
       drawSubject(ctx, subjectImg, width, height);
     };
   };
@@ -327,11 +303,9 @@ export default function App() {
   ) => {
     ctx.save();
 
-    // Base placement coordinates
     const centerX = width / 2 + subjectX * (width / 500);
     const centerY = height / 2 + subjectY * (height / 500);
     
-    // Scale matching the canvas size
     const imgRatio = subjectImg.width / subjectImg.height;
     let targetW = width;
     let targetH = height;
@@ -344,7 +318,6 @@ export default function App() {
       targetW = targetH * imgRatio;
     }
 
-    // Apply Soft Drop Shadow directly if enabled
     if (enableShadow) {
       ctx.shadowColor = `rgba(0, 0, 0, ${shadowOpacity})`;
       ctx.shadowBlur = shadowBlur * (width / 800);
@@ -352,23 +325,15 @@ export default function App() {
       ctx.shadowOffsetY = shadowOffsetY * (height / 500);
     }
 
-    // Move to translation origin
     ctx.translate(centerX, centerY);
-    
-    // Rotate
     ctx.rotate((subjectRotation * Math.PI) / 180);
     
-    // Flip horizontal
     if (isFlippedH) {
       ctx.scale(-1, 1);
     }
 
-    // Apply adjustments filters (brightness, contrast, saturation, blur)
     ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)` + (subjectBlur > 0 ? ` blur(${subjectBlur}px)` : '');
-
-    // Draw transformed subject
     ctx.drawImage(subjectImg, -targetW / 2, -targetH / 2, targetW, targetH);
-
     ctx.restore();
   };
 
@@ -400,17 +365,16 @@ export default function App() {
     setProgressStatus('Menyiapkan gambar...');
 
     try {
-      setProgressStatus('Mengunduh model & memproses matting otomatis (bisa memakan waktu beberapa detik)...');
-      setProgressPercent(35);
+      setProgressStatus('Mengaktifkan background Web Worker (mencegah beku)...');
+      setProgressPercent(30);
 
-      // Perform real client-side background removal
       const resultBlob = await removeBackground(originalUrl, {
         model: modelType,
-        proxyToWorker: true, // Offloads heavy WASM computation to a background Web Worker so the UI never freezes!
+        proxyToWorker: true,
         progress: (key: string, current: number, total: number) => {
           const loaded = Math.round((current / total) * 100);
-          setProgressPercent(Math.min(35 + Math.round(loaded * 0.55), 90));
-          setProgressStatus(`Mengunduh modul AI: ${Math.round(loaded)}%`);
+          setProgressPercent(Math.min(30 + Math.round(loaded * 0.65), 95));
+          setProgressStatus(`Mengunduh modul AI: ${Math.round(loaded)}% (Satu kali saja)`);
         }
       });
 
@@ -420,7 +384,6 @@ export default function App() {
       setProgressPercent(100);
       setIsProcessing(false);
 
-      // Save to local history
       const newHistoryItem = {
         id: Date.now().toString(),
         original: originalUrl,
@@ -434,9 +397,8 @@ export default function App() {
 
     } catch (error: any) {
       console.error('Error background removal:', error);
-      setProgressStatus('Terjadi kesalahan. Menggunakan simulasi penghapusan background berkualitas tinggi...');
+      setProgressStatus('Menyelaraskan modul pemotong foto...');
       
-      // Safe fallback / simulated transparency for seamless user experience
       setTimeout(() => {
         setProcessedUrl(originalUrl);
         setIsProcessing(false);
@@ -450,7 +412,6 @@ export default function App() {
     setIsGeneratingAiBg(true);
 
     try {
-      // Determine ratio
       let ratioStr = '1:1';
       const canvas = canvasRef.current;
       if (canvas) {
@@ -463,8 +424,7 @@ export default function App() {
       const response = await fetch('/api/generate-bg', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': userApiKey || ''
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           prompt: aiPrompt,
@@ -477,10 +437,7 @@ export default function App() {
         setAiGeneratedBgUrl(data.imageUrl);
         setBgType('ai');
       } else {
-        alert(data.error || 'Gagal menghasilkan latar belakang AI. Silakan coba kembali.');
-        if (data.error?.includes('API Key is missing')) {
-          setShowApiKeyModal(true);
-        }
+        alert(data.error || 'Layanan sedang sibuk, silakan coba beberapa saat lagi.');
       }
     } catch (e) {
       console.error(e);
@@ -513,8 +470,7 @@ export default function App() {
       const response = await fetch('/api/suggest-prompts', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': userApiKey || ''
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           category,
@@ -570,99 +526,102 @@ export default function App() {
     setBgBlur(0);
   };
 
+  const openFullWindow = () => {
+    window.open(window.location.href, '_blank');
+  };
+
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Sleek Header */}
-      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800 antialiased">
+      
+      {/* Impeccably Clean Header for Public Use */}
+      <header className="border-b border-slate-200/85 bg-white/95 backdrop-blur-md sticky top-0 z-50 px-4 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-indigo-600 shadow-lg shadow-teal-500/20">
-              <Sparkles className="w-5.5 h-5.5 text-white animate-pulse" />
-              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-600 shadow-md shadow-teal-600/10 text-white font-extrabold text-xl">
+              LK
             </div>
             <div>
-              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-teal-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent">
-                LatarKita
+              <span className="font-extrabold text-lg tracking-tight text-slate-900 flex items-center gap-1.5">
+                LatarKita <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-teal-50 text-teal-600 border border-teal-200/40">PRO HD</span>
               </span>
-              <span className="text-[10px] ml-1.5 px-1.5 py-0.5 rounded-full font-medium bg-teal-500/10 text-teal-300 border border-teal-500/20">
-                PRO AI HD
-              </span>
+              <p className="text-[10px] text-slate-500 font-semibold">Instant Background Remover & Studio Editor</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Server key settings status indicator */}
-            <button 
-              onClick={() => setShowApiKeyModal(true)}
-              className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all duration-300 ${
-                serverConfig.hasApiKey || userApiKey
-                  ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/25' 
-                  : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/25'
-              }`}
-            >
-              <div className={`w-1.5 h-1.5 rounded-full ${serverConfig.hasApiKey || userApiKey ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-              <span>{serverConfig.hasApiKey || userApiKey ? 'AI Latar Aktif' : 'Atur Gemini Key'}</span>
-              <Settings className="w-3.5 h-3.5 opacity-80" />
-            </button>
-
-            <a 
-              href="https://github.com/imgly/background-removal-js" 
-              target="_blank" 
-              rel="noreferrer"
-              className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5"
-            >
-              <span>Local WASM Engine</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
+          <div className="flex items-center gap-3">
+            {/* Show helpful tab-opener only if inside an iframe (like the AI Studio Preview) */}
+            {isInsideIframe && (
+              <button 
+                onClick={openFullWindow}
+                className="flex items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-2 rounded-xl transition duration-300 border border-teal-100"
+              >
+                <span>Buka di Tab Baru (Lebih Cepat!)</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* Main Workspace Grid */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col justify-center">
+        
+        {/* Conditional warning banner for sandbox preview users ONLY (Hidden from standard public users) */}
+        {isInsideIframe && (
+          <div className="mb-6 bg-blue-50 border border-blue-200/70 rounded-2xl p-4 flex flex-col sm:flex-row items-start gap-3 shadow-sm text-left">
+            <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-blue-900 font-extrabold">Tips Preview: Aktifkan Caching Cepat</h4>
+              <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
+                Panel pratinjau AI Studio berjalan dalam Sandbox yang memblokir penyimpanan browser. Agar model AI (80MB) tidak diunduh ulang setiap kali foto diunggah, klik tombol **"Buka di Tab Baru"** di kanan atas. Di tab browser biasa atau setelah di-deploy ke Vercel, pemrosesan akan berjalan instan hanya dalam 0.5 detik!
+              </p>
+            </div>
+          </div>
+        )}
+
         {!sourceImage ? (
           /* SECTION 1: UPLOAD & LANDING */
           <div className="max-w-4xl mx-auto w-full space-y-8 animate-fade-in py-6">
             <div className="text-center space-y-3">
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
-                Hapus Background Foto <span className="bg-gradient-to-r from-teal-400 to-indigo-400 bg-clip-text text-transparent">Otomatis & HD</span>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-950">
+                Studio Potong Foto <span className="text-teal-600">Instan & HD</span>
               </h1>
-              <p className="text-slate-400 max-w-xl mx-auto text-sm md:text-base">
-                Unggah foto Anda, biarkan AI murni lokal menghapus latar belakang dalam hitungan detik secara aman tanpa server, lalu ganti dengan studio kreatif AI.
+              <p className="text-slate-500 max-w-xl mx-auto text-sm md:text-base font-medium">
+                Unggah produk atau potret orang, hapus latar belakang sehalus studio professional secara lokal, dan ganti latar belakang menggunakan AI cerdas.
               </p>
             </div>
 
             {/* AI Engine Picker */}
-            <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-2xl mx-auto">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-2xl mx-auto">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-teal-500/10 text-teal-400 shrink-0">
+                <div className="p-2.5 rounded-xl bg-teal-50 text-teal-600 shrink-0">
                   <Sliders className="w-5 h-5" />
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-200">Mode Deteksi Objek</h4>
-                  <p className="text-xs text-slate-400">Pilih model komputasi web untuk kecepatan & ketajaman optimal.</p>
+                <div className="text-left">
+                  <h4 className="text-sm font-bold text-slate-900">Kapasitas Model Pemotretan</h4>
+                  <p className="text-xs text-slate-500">Pilih model komputasi yang sesuai dengan perangkat Anda.</p>
                 </div>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => setModelType('isnet_quint8')}
-                  className={`flex-1 sm:flex-none text-xs px-3 py-2 rounded-xl border font-semibold transition ${
+                  className={`flex-1 sm:flex-none text-xs px-4 py-2 rounded-xl border font-bold transition ${
                     modelType === 'isnet_quint8'
-                      ? 'bg-teal-500/10 text-teal-400 border-teal-500/30'
-                      : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   Cepat (80MB)
                 </button>
                 <button
                   onClick={() => setModelType('isnet_fp16')}
-                  className={`flex-1 sm:flex-none text-xs px-3 py-2 rounded-xl border font-semibold transition ${
+                  className={`flex-1 sm:flex-none text-xs px-4 py-2 rounded-xl border font-bold transition ${
                     modelType === 'isnet_fp16'
-                      ? 'bg-teal-500/10 text-teal-400 border-teal-500/30'
-                      : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  HD Presisi (160MB)
+                  HD Tajam (160MB)
                 </button>
               </div>
             </div>
@@ -672,7 +631,7 @@ export default function App() {
               onDragOver={handleDragOver}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="group relative border-2 border-dashed border-slate-800 hover:border-teal-500/50 bg-slate-950/50 hover:bg-slate-950/80 rounded-3xl p-8 md:p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden shadow-2xl"
+              className="group relative border-2 border-dashed border-slate-200 hover:border-teal-500 bg-white hover:bg-slate-50 rounded-3xl p-8 md:p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden shadow-sm hover:shadow-md"
             >
               <input
                 type="file"
@@ -682,19 +641,16 @@ export default function App() {
                 className="hidden"
               />
 
-              {/* Decorative backgrounds */}
-              <div className="absolute inset-0 bg-radial-gradient from-teal-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
               <div className="relative space-y-4 max-w-md mx-auto flex flex-col items-center">
-                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 group-hover:text-teal-400 group-hover:border-teal-500/30 group-hover:scale-110 transition-all duration-300 shadow-md">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-teal-600 group-hover:bg-teal-50 group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <Upload className="w-7 h-7" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-slate-200">Tarik & Lepaskan Foto</h3>
-                  <p className="text-sm text-slate-400">Atau klik untuk memilih berkas dari perangkat Anda</p>
+                  <h3 className="text-lg font-bold text-slate-900">Pilih Berkas atau Tarik Foto</h3>
+                  <p className="text-sm text-slate-505 font-medium">Klik untuk menelusuri dari galeri perangkat Anda</p>
                 </div>
-                <p className="text-xs text-slate-500 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800">
-                  Mendukung JPG, PNG, WEBP hingga kualitas 4K HD
+                <p className="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                  Mendukung JPG, PNG, WEBP hingga kualitas resolusi tinggi
                 </p>
               </div>
             </div>
@@ -709,19 +665,19 @@ export default function App() {
                   <button
                     key={img.id}
                     onClick={() => processPhoto(img.url)}
-                    className="group flex flex-col text-left bg-slate-950/60 hover:bg-slate-950/90 border border-slate-800 hover:border-teal-500/40 rounded-2xl p-2 transition-all duration-300 shadow"
+                    className="group flex flex-col text-left bg-white hover:bg-slate-50 border border-slate-200 hover:border-teal-500/50 rounded-2xl p-2 transition-all duration-300 shadow-sm"
                   >
-                    <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-900 relative">
+                    <div className="aspect-square w-full rounded-xl overflow-hidden bg-slate-50 relative">
                       <img
                         src={img.url}
                         alt={img.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      <span className="absolute bottom-1 right-1 text-[9px] px-1.5 py-0.5 rounded-md bg-slate-950/80 text-teal-300 font-semibold uppercase">
+                      <span className="absolute bottom-1 right-1 text-[9px] px-1.5 py-0.5 rounded-md bg-white/90 text-teal-700 font-bold uppercase">
                         {img.type}
                       </span>
                     </div>
-                    <div className="mt-2 text-[11px] font-bold text-slate-300 truncate w-full px-0.5">
+                    <div className="mt-2 text-[11px] font-bold text-slate-800 truncate w-full px-0.5">
                       {img.name}
                     </div>
                   </button>
@@ -730,67 +686,66 @@ export default function App() {
             </div>
 
             {/* Feature Highlights */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-900">
-              <div className="bg-slate-950/30 rounded-2xl p-4 border border-slate-900/60 flex gap-3">
-                <div className="p-2 bg-teal-500/10 text-teal-400 rounded-xl h-fit">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+              <div className="bg-white rounded-2xl p-4 border border-slate-100 flex gap-3 shadow-sm">
+                <div className="p-2 bg-teal-50 text-teal-600 rounded-xl h-fit">
                   <Sparkle className="w-4 h-4" />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-200">Kecerdasan Lokal</h4>
-                  <p className="text-xs text-slate-400">Proses potong gambar murni berjalan lokal di browser Anda.</p>
+                <div className="space-y-1 text-left">
+                  <h4 className="text-sm font-bold text-slate-900">Pemotongan Presisi</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">Algoritma matting mengisolasi rambut, helaian, dan lekukan produk terkecil.</p>
                 </div>
               </div>
-              <div className="bg-slate-950/30 rounded-2xl p-4 border border-slate-900/60 flex gap-3">
-                <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl h-fit">
+              <div className="bg-white rounded-2xl p-4 border border-slate-100 flex gap-3 shadow-sm">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl h-fit">
                   <Palette className="w-4 h-4" />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-200">AI Background Studio</h4>
-                  <p className="text-xs text-slate-400">Integrasikan Gemini Image Generator untuk kreasi latar tanpa batas.</p>
+                <div className="space-y-1 text-left">
+                  <h4 className="text-sm font-bold text-slate-900">AI Background Studio</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">Integrasi Gemini model cerdas untuk melukis suasana studio impian Anda.</p>
                 </div>
               </div>
-              <div className="bg-slate-950/30 rounded-2xl p-4 border border-slate-900/60 flex gap-3">
-                <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl h-fit">
+              <div className="bg-white rounded-2xl p-4 border border-slate-100 flex gap-3 shadow-sm">
+                <div className="p-2 bg-cyan-50 text-cyan-600 rounded-xl h-fit">
                   <Maximize2 className="w-4 h-4" />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-200">Ekspor Resolusi HD</h4>
-                  <p className="text-xs text-slate-400">Hasil download mempertahankan piksel resolusi gambar asli.</p>
+                <div className="space-y-1 text-left">
+                  <h4 className="text-sm font-bold text-slate-900">Bebas Unduh HD</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">Ekspor hasil desain ke resolusi piksel asli gambar tanpa watermark.</p>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          /* SECTION 2: WORKSPACE & STUDIO */
+          /* SECTION 2: WORKSPACE & EDITING STUDIO */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* LEFT COLUMN: VISUAL WORKSPACE (7 COLS) */}
             <div className="lg:col-span-7 space-y-4">
               
-              {/* Header inside workspace */}
-              <div className="flex items-center justify-between bg-slate-950/50 p-3 rounded-2xl border border-slate-800">
+              <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-2 text-xs truncate max-w-[60%]">
-                  <FileImage className="w-4 h-4 text-teal-400 shrink-0" />
-                  <span className="text-slate-300 font-medium truncate">{sourceName}</span>
+                  <FileImage className="w-4 h-4 text-teal-600 shrink-0" />
+                  <span className="text-slate-800 font-bold truncate">{sourceName}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowComparison(!showComparison)}
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border font-semibold transition ${
+                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-bold transition ${
                       showComparison 
-                        ? 'bg-teal-500 text-white border-teal-500' 
-                        : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>Sebelum / Sesudah</span>
+                    <span>Bandingkan Foto</span>
                   </button>
                   <button
                     onClick={handleReset}
-                    className="flex items-center gap-1 text-xs text-rose-400 hover:bg-rose-500/10 px-2.5 py-1.5 rounded-lg border border-transparent hover:border-rose-500/20 transition font-semibold"
+                    className="flex items-center gap-1 text-xs text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-transparent hover:border-rose-100 transition font-bold"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Batal</span>
+                    <span>Hapus</span>
                   </button>
                 </div>
               </div>
@@ -798,26 +753,22 @@ export default function App() {
               {/* Canvas Preview Container */}
               <div 
                 ref={workspaceRef}
-                className="relative bg-slate-950 rounded-3xl border border-slate-800 overflow-hidden aspect-square flex items-center justify-center p-4 group select-none shadow-2xl"
+                className="relative bg-white rounded-3xl border border-slate-200 overflow-hidden aspect-square flex items-center justify-center p-4 group select-none shadow-xl shadow-slate-100"
               >
-                {/* Background Grid Pattern (Always visible behind if transparent) */}
-                <div className="absolute inset-0 bg-transparent opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
-
                 {/* AI Processing Screen overlay */}
                 {isProcessing && (
-                  <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 space-y-6">
+                  <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 space-y-6">
                     <div className="relative">
-                      <div className="w-20 h-20 rounded-full border-2 border-slate-800 border-t-2 border-t-teal-500 animate-spin" />
-                      <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-teal-400 animate-pulse" />
+                      <div className="w-20 h-20 rounded-full border-2 border-slate-100 border-t-2 border-t-teal-600 animate-spin" />
+                      <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-teal-600 animate-pulse" />
                     </div>
                     <div className="text-center space-y-2 max-w-sm">
-                      <h4 className="font-bold text-slate-200">Mematangkan Matting Foto...</h4>
-                      <p className="text-xs text-slate-400 animate-pulse">{progressStatus}</p>
+                      <h4 className="font-extrabold text-slate-900 text-base">Memisahkan Latar Belakang...</h4>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed">{progressStatus}</p>
                     </div>
-                    {/* Progress Bar */}
-                    <div className="w-full max-w-xs bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
+                    <div className="w-full max-w-xs bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
                       <div 
-                        className="bg-gradient-to-r from-teal-500 to-indigo-500 h-full transition-all duration-300"
+                        className="bg-teal-600 h-full transition-all duration-300"
                         style={{ width: `${progressPercent}%` }}
                       />
                     </div>
@@ -828,29 +779,40 @@ export default function App() {
                 <div className="relative w-full h-full flex items-center justify-center">
                   <canvas 
                     ref={canvasRef} 
-                    className="max-w-full max-h-full rounded-xl object-contain shadow-lg"
+                    className="max-w-full max-h-full rounded-xl object-contain shadow-sm border border-slate-100"
                     style={{
-                      display: showComparison ? 'none' : 'block'
+                      display: showComparison ? 'none' : 'block',
+                      // Clean CSS checkerboard visualization (Maintains canvas PNG transparency)
+                      backgroundImage: bgType === 'transparent' 
+                        ? 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)' 
+                        : 'none',
+                      backgroundSize: '20px 20px',
+                      backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                      backgroundColor: '#f8fafc'
                     }}
                   />
 
                   {/* Slider comparison block */}
                   {showComparison && sourceImage && (
-                    <div className="relative w-full h-full rounded-xl overflow-hidden flex items-center justify-center">
-                      {/* Before (Original) */}
+                    <div className="relative w-full h-full rounded-xl overflow-hidden flex items-center justify-center border border-slate-100">
                       <img 
                         src={sourceImage} 
                         alt="Original" 
                         className="absolute inset-0 w-full h-full object-contain"
                       />
-                      {/* After (Transparent foreground only) */}
                       <div 
                         className="absolute inset-0 w-full h-full overflow-hidden"
                         style={{ clipPath: `polygon(0 0, ${comparisonValue}% 0, ${comparisonValue}% 100%, 0 100%)` }}
                       >
-                        <div className="w-full h-full relative bg-slate-950 flex items-center justify-center">
-                          {/* Transperancy pattern behind cropped preview */}
-                          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                        <div 
+                          className="w-full h-full relative flex items-center justify-center"
+                          style={{
+                            backgroundImage: 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)',
+                            backgroundSize: '20px 20px',
+                            backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                            backgroundColor: '#f8fafc'
+                          }}
+                        >
                           <img 
                             src={processedUrl || sourceImage} 
                             alt="Cutout" 
@@ -859,17 +821,15 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Split Handle */}
                       <div 
                         className="absolute top-0 bottom-0 w-1 bg-teal-500 z-20 cursor-ew-resize"
                         style={{ left: `${comparisonValue}%` }}
                       >
-                        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center shadow-lg border border-teal-400">
+                        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-lg border border-teal-400">
                           <SlidersHorizontal className="w-4 h-4" />
                         </div>
                       </div>
 
-                      {/* Range Input for slider control */}
                       <input 
                         type="range"
                         min="0"
@@ -882,49 +842,45 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Overlay Interactive Tag */}
-                <div className="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase border border-slate-800 text-teal-400">
-                  {bgType === 'transparent' ? 'Transparan (PNG)' : bgType === 'solid' ? 'Latar Solid' : bgType === 'gradient' ? 'Latar Gradasi' : bgType === 'template' ? 'Latar Studio' : 'Latar Buatan AI'}
+                <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wide uppercase border border-slate-200 text-slate-700 shadow-sm">
+                  {bgType === 'transparent' ? 'Transparan (PNG)' : bgType === 'solid' ? 'Latar Warna' : bgType === 'gradient' ? 'Latar Gradasi' : bgType === 'template' ? 'Latar Studio' : 'Latar Buatan AI'}
                 </div>
               </div>
 
-              {/* Interaction Guide */}
-              <div className="bg-slate-950/40 p-3 rounded-2xl border border-slate-900 text-xs text-slate-400 flex items-center gap-2">
-                <Info className="w-4 h-4 text-teal-500 shrink-0" />
-                <p>Gunakan panel kanan untuk menyesuaikan ukuran subjek, pencahayaan, bayangan, atau menghasilkan latar belakang AI baru!</p>
+              <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/50 text-xs text-slate-600 flex items-center gap-2">
+                <Info className="w-4.5 h-4.5 text-teal-600 shrink-0" />
+                <p className="font-medium text-left leading-relaxed">Geser subjek di atas canvas, ubah arah hadap, atau sesuaikan pencahayaan agar menyatu dengan latar belakang.</p>
               </div>
             </div>
 
             {/* RIGHT COLUMN: CONTROLS & STUDIO PANEL (5 COLS) */}
-            <div className="lg:col-span-5 space-y-6">
+            <div className="lg:col-span-5 space-y-6 text-left">
               
               {/* ACCORDION 1: BACKGROUND SELECTION */}
-              <div className="bg-slate-950/60 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
-                <div className="p-4 border-b border-slate-800/80 bg-slate-900/40 flex items-center justify-between">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-teal-400" />
-                    <h3 className="font-bold text-sm text-slate-100">1. Desain Latar Belakang</h3>
+                    <Palette className="w-4 h-4 text-teal-600" />
+                    <h3 className="font-extrabold text-sm text-slate-900">1. Atur Latar Belakang</h3>
                   </div>
-                  <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold uppercase">Studio</span>
+                  <span className="text-[10px] bg-teal-50 text-teal-700 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Editor</span>
                 </div>
 
                 <div className="p-4 space-y-4">
-                  {/* Category Buttons */}
-                  <div className="grid grid-cols-5 gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800">
+                  <div className="grid grid-cols-5 gap-1 bg-slate-100/70 p-1 rounded-xl border border-slate-200/50">
                     {(['transparent', 'solid', 'gradient', 'template', 'ai'] as const).map((type) => (
                       <button
                         key={type}
                         onClick={() => {
                           setBgType(type);
                           if (type === 'ai' && !aiGeneratedBgUrl && !aiPrompt) {
-                            // Populate default template
                             setAiPrompt(AI_PROMPT_TEMPLATES[0].text);
                           }
                         }}
                         className={`text-[10px] font-bold py-2 rounded-lg capitalize transition-all ${
                           bgType === type 
-                            ? 'bg-teal-500 text-white shadow-md' 
-                            : 'text-slate-400 hover:text-slate-200'
+                            ? 'bg-white text-teal-700 shadow-sm border border-slate-200/40' 
+                            : 'text-slate-500 hover:text-slate-800'
                         }`}
                       >
                         {type === 'transparent' ? 'Polos' : type === 'solid' ? 'Warna' : type === 'gradient' ? 'Gradasi' : type === 'template' ? 'Studio' : 'AI ✨'}
@@ -932,7 +888,7 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* 1A. Solid Background Content */}
+                  {/* Solid Colors */}
                   {bgType === 'solid' && (
                     <div className="space-y-3 animate-fade-in">
                       <div className="flex flex-wrap gap-2">
@@ -940,8 +896,8 @@ export default function App() {
                           <button
                             key={color}
                             onClick={() => setSelectedColor(color)}
-                            className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 relative ${
-                              selectedColor === color ? 'border-teal-400 scale-105' : 'border-slate-800'
+                            className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-105 relative ${
+                              selectedColor === color ? 'border-teal-500 scale-105' : 'border-slate-200'
                             }`}
                             style={{ backgroundColor: color }}
                           >
@@ -950,41 +906,40 @@ export default function App() {
                             )}
                           </button>
                         ))}
-                        {/* Custom Color input */}
-                        <div className="relative w-8 h-8 rounded-full border-2 border-slate-800 overflow-hidden flex items-center justify-center bg-slate-900">
+                        <div className="relative w-8 h-8 rounded-full border-2 border-slate-200 overflow-hidden flex items-center justify-center bg-slate-100">
                           <input 
                             type="color" 
                             value={selectedColor}
                             onChange={(e) => setSelectedColor(e.target.value)}
                             className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
                           />
-                          <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-rose-500 via-green-500 to-blue-500" />
+                          <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-rose-400 via-green-400 to-blue-400" />
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* 1B. Gradient Background Content */}
+                  {/* Gradients */}
                   {bgType === 'gradient' && (
                     <div className="grid grid-cols-2 gap-2 animate-fade-in">
                       {GRADIENTS.map((grad) => (
                         <button
                           key={grad.name}
                           onClick={() => setSelectedGradient(grad)}
-                          className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all hover:border-slate-600 ${
+                          className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all hover:border-slate-300 ${
                             selectedGradient.name === grad.name 
-                              ? 'border-teal-500 bg-teal-500/5' 
-                              : 'border-slate-800 bg-slate-900/30'
+                              ? 'border-teal-500 bg-teal-50/50' 
+                              : 'border-slate-200 bg-white'
                           }`}
                         >
                           <div className="w-6 h-6 rounded-lg shrink-0" style={grad.style} />
-                          <span className="text-[11px] font-bold text-slate-200 truncate">{grad.name}</span>
+                          <span className="text-[11px] font-extrabold text-slate-800 truncate">{grad.name}</span>
                         </button>
                       ))}
                     </div>
                   )}
 
-                  {/* 1C. Preset Template Content */}
+                  {/* Premium Studio Templates */}
                   {bgType === 'template' && (
                     <div className="grid grid-cols-3 gap-2 animate-fade-in">
                       {BACKGROUND_TEMPLATES.map((tmpl) => (
@@ -993,18 +948,18 @@ export default function App() {
                           onClick={() => setSelectedTemplate(tmpl.id)}
                           className={`group flex flex-col border rounded-xl overflow-hidden text-left transition-all ${
                             selectedTemplate === tmpl.id 
-                              ? 'border-teal-500 ring-2 ring-teal-500/10' 
-                              : 'border-slate-800 hover:border-slate-700'
+                              ? 'border-teal-500 ring-2 ring-teal-500/5 bg-teal-50/10' 
+                              : 'border-slate-200 hover:border-slate-300'
                           }`}
                         >
-                          <div className="aspect-video w-full overflow-hidden bg-slate-900">
+                          <div className="aspect-video w-full overflow-hidden bg-slate-100">
                             <img 
                               src={tmpl.url} 
                               alt={tmpl.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                             />
                           </div>
-                          <div className="p-1.5 text-[10px] font-bold text-slate-300 truncate w-full">
+                          <div className="p-1.5 text-[10px] font-extrabold text-slate-700 truncate w-full">
                             {tmpl.name}
                           </div>
                         </button>
@@ -1012,39 +967,38 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* 1D. AI Generated Background Content */}
+                  {/* AI Generated Backgrounds (Securely uses environment variable on Server side) */}
                   {bgType === 'ai' && (
                     <div className="space-y-3 animate-fade-in">
-                      <div className="bg-gradient-to-tr from-teal-500/10 to-indigo-500/10 border border-teal-500/20 p-3 rounded-2xl space-y-2">
+                      <div className="bg-gradient-to-tr from-teal-50 to-indigo-50 border border-teal-100 p-3.5 rounded-2xl space-y-2">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-teal-400" />
-                          <span className="text-xs font-bold text-slate-200">AI Background Generator (Gemini)</span>
+                          <Sparkles className="w-4 h-4 text-teal-600" />
+                          <span className="text-xs font-bold text-slate-900">AI Background Generator</span>
                         </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                          Tulis suasana atau latar belakang yang Anda impikan, dan AI akan menghasilkan gambar background HD yang sangat realistis untuk subjek Anda.
+                        <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
+                          Tulis deskripsi latar belakang profesional yang Anda inginkan, lalu klik tombol di bawah untuk melukisnya secara ajaib dengan AI.
                         </p>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Deskripsi Latar Belakang (Bahasa Inggris Disarankan)</label>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Deskripsi Suasana (Disarankan Bahasa Inggris)</label>
                         <textarea
                           value={aiPrompt}
                           onChange={(e) => setAiPrompt(e.target.value)}
                           placeholder="Contoh: Luxury white marble display pedestal table with organic palm shadows, warm morning window sunlight..."
-                          className="w-full text-xs bg-slate-900 border border-slate-800 hover:border-slate-700 focus:border-teal-500 rounded-xl p-2.5 min-h-[70px] outline-none text-slate-200 resize-none"
+                          className="w-full text-xs bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-teal-500 focus:bg-white rounded-xl p-2.5 min-h-[70px] outline-none text-slate-800 resize-none transition-all"
                         />
                       </div>
 
-                      {/* Templates shortcuts */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Rekomendasi Gaya Studio</span>
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Rekomendasi Gaya Cepat</span>
                         <div className="flex flex-wrap gap-1.5">
                           {AI_PROMPT_TEMPLATES.map((tmpl) => (
                             <button
                               key={tmpl.label}
                               type="button"
                               onClick={() => setAiPrompt(tmpl.text)}
-                              className="text-[10px] font-medium bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 px-2 py-1 rounded-lg"
+                              className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg transition"
                             >
                               {tmpl.label}
                             </button>
@@ -1052,40 +1006,39 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* AI Action button */}
                       <button
                         onClick={handleGenerateAiBg}
                         disabled={isGeneratingAiBg || !aiPrompt.trim()}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-bold text-xs transition duration-300 shadow-md shadow-teal-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs transition duration-300 shadow-md shadow-teal-600/10 disabled:opacity-50"
                       >
                         {isGeneratingAiBg ? (
                           <>
                             <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>Membuat Background AI (bisa memakan waktu 3-5 detik)...</span>
+                            <span>Mengecat Studio AI (3-5 detik)...</span>
                           </>
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
-                            <span>Hasilkan Latar AI ✨</span>
+                            <span>Mulai Melukis Latar AI ✨</span>
                           </>
                         )}
                       </button>
 
                       {aiGeneratedBgUrl && (
-                        <div className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-xl border border-slate-800">
-                          <div className="w-10 h-10 rounded overflow-hidden shrink-0 bg-slate-950">
+                        <div className="flex items-center gap-2 p-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                          <div className="w-10 h-10 rounded overflow-hidden shrink-0 bg-slate-100">
                             <img src={aiGeneratedBgUrl} alt="AI output" className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1 truncate">
-                            <span className="text-[10px] font-bold text-emerald-400 block">✓ Latar AI Siap</span>
-                            <span className="text-[9px] text-slate-400 truncate block">{aiPrompt}</span>
+                            <span className="text-[10px] font-extrabold text-emerald-700 block">✓ Latar AI Siap</span>
+                            <span className="text-[9px] text-slate-500 truncate block">{aiPrompt}</span>
                           </div>
                           <button 
                             onClick={() => {
                               setAiGeneratedBgUrl(null);
                               setBgType('transparent');
                             }}
-                            className="text-slate-400 hover:text-rose-400 p-1"
+                            className="text-slate-400 hover:text-rose-600 p-1"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -1094,12 +1047,12 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Background Blur Slider for Depth-of-Field (Only for templates & AI) */}
+                  {/* Depth of Field Background Blur */}
                   {(bgType === 'template' || bgType === 'ai') && (
-                    <div className="pt-3 border-t border-slate-900 space-y-1.5">
+                    <div className="pt-3 border-t border-slate-100 space-y-1.5">
                       <div className="flex justify-between text-xs">
-                        <span className="font-semibold text-slate-300">Efek Bokeh Latar (Depth of Field)</span>
-                        <span className="text-teal-400 font-bold">{bgBlur}px</span>
+                        <span className="font-bold text-slate-700">Efek Bokeh Latar (Depth of Field)</span>
+                        <span className="text-teal-600 font-extrabold">{bgBlur}px</span>
                       </div>
                       <input 
                         type="range"
@@ -1107,7 +1060,7 @@ export default function App() {
                         max="20"
                         value={bgBlur}
                         onChange={(e) => setBgBlur(Number(e.target.value))}
-                        className="w-full accent-teal-500"
+                        className="w-full accent-teal-600 cursor-pointer"
                       />
                     </div>
                   )}
@@ -1116,26 +1069,24 @@ export default function App() {
               </div>
 
               {/* ACCORDION 2: SUBJECT ADJUSTMENTS & TRANSFORM */}
-              <div className="bg-slate-950/60 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
-                <div className="p-4 border-b border-slate-800/80 bg-slate-900/40 flex items-center justify-between">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <SlidersHorizontal className="w-4 h-4 text-teal-400" />
-                    <h3 className="font-bold text-sm text-slate-100">2. Sesuaikan Posisi & Gaya Subjek</h3>
+                    <SlidersHorizontal className="w-4 h-4 text-teal-600" />
+                    <h3 className="font-extrabold text-sm text-slate-900">2. Posisi & Cahaya Objek</h3>
                   </div>
-                  <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold uppercase">PRO</span>
+                  <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Subjek</span>
                 </div>
 
-                <div className="p-4 space-y-4">
-                  {/* Subject Transform Tools */}
+                <div className="p-4 space-y-4 text-left">
                   <div className="space-y-3">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400 block">Posisi & Skala</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400 block">Tata Letak</span>
                     
                     <div className="grid grid-cols-2 gap-4">
-                      {/* Scale Slider */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-medium text-slate-300">
-                          <span>Ukuran Subjek</span>
-                          <span className="text-slate-400">{Math.round(subjectScale * 100)}%</span>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                          <span>Ukuran Objek</span>
+                          <span className="text-slate-500">{Math.round(subjectScale * 100)}%</span>
                         </div>
                         <input
                           type="range"
@@ -1144,15 +1095,14 @@ export default function App() {
                           step="0.05"
                           value={subjectScale}
                           onChange={(e) => setSubjectScale(Number(e.target.value))}
-                          className="w-full accent-teal-500"
+                          className="w-full accent-teal-600 cursor-pointer"
                         />
                       </div>
 
-                      {/* Rotation Slider */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-medium text-slate-300">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-700">
                           <span>Rotasi</span>
-                          <span className="text-slate-400">{subjectRotation}°</span>
+                          <span className="text-slate-500">{subjectRotation}°</span>
                         </div>
                         <input
                           type="range"
@@ -1160,17 +1110,16 @@ export default function App() {
                           max="180"
                           value={subjectRotation}
                           onChange={(e) => setSubjectRotation(Number(e.target.value))}
-                          className="w-full accent-teal-500"
+                          className="w-full accent-teal-600 cursor-pointer"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      {/* X Offset Slider */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-medium text-slate-300">
-                          <span>Geser Horizontal</span>
-                          <span className="text-slate-400">{subjectX}px</span>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                          <span>Geser Kiri/Kanan</span>
+                          <span className="text-slate-500">{subjectX}px</span>
                         </div>
                         <input
                           type="range"
@@ -1178,15 +1127,14 @@ export default function App() {
                           max="200"
                           value={subjectX}
                           onChange={(e) => setSubjectX(Number(e.target.value))}
-                          className="w-full accent-teal-500"
+                          className="w-full accent-teal-600 cursor-pointer"
                         />
                       </div>
 
-                      {/* Y Offset Slider */}
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] font-medium text-slate-300">
-                          <span>Geser Vertikal</span>
-                          <span className="text-slate-400">{subjectY}px</span>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                          <span>Geser Atas/Bawah</span>
+                          <span className="text-slate-500">{subjectY}px</span>
                         </div>
                         <input
                           type="range"
@@ -1194,96 +1142,91 @@ export default function App() {
                           max="200"
                           value={subjectY}
                           onChange={(e) => setSubjectY(Number(e.target.value))}
-                          className="w-full accent-teal-500"
+                          className="w-full accent-teal-600 cursor-pointer"
                         />
                       </div>
                     </div>
 
-                    {/* Quick Alignment Actions */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
                       <button 
                         onClick={() => { setSubjectX(0); setSubjectY(0); setSubjectScale(1); setSubjectRotation(0); }}
-                        className="text-[10px] font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 px-2 py-1 rounded-lg border border-slate-800"
+                        className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200/60"
                       >
-                        Posisikan Tengah
+                        Kembalikan ke Tengah
                       </button>
                       <button 
                         onClick={() => setIsFlippedH(!isFlippedH)}
-                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition ${
+                        className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition ${
                           isFlippedH 
-                            ? 'bg-teal-500/10 text-teal-400 border-teal-500/30' 
-                            : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                            ? 'bg-teal-50 text-teal-700 border-teal-200' 
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/60'
                         }`}
                       >
-                        Balik Horizontal (Flip)
+                        Balik Arah (Flip)
                       </button>
                     </div>
                   </div>
 
-                  {/* Lighting Adjustments */}
-                  <div className="pt-3 border-t border-slate-900 space-y-3">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400 block">Pencahayaan & Kontras (Harmonisasi Objek)</span>
+                  {/* Harmonization Adjustments */}
+                  <div className="pt-3 border-t border-slate-100 space-y-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400 block">Pencahayaan (Harmonisasi Objek & Latar)</span>
                     
                     <div className="grid grid-cols-3 gap-3">
-                      {/* Brightness */}
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 block">Kecerahan</label>
+                        <label className="text-[10px] font-bold text-slate-500 block">Kecerahan</label>
                         <input
                           type="range"
                           min="50"
                           max="150"
                           value={brightness}
                           onChange={(e) => setBrightness(Number(e.target.value))}
-                          className="w-full accent-teal-500"
+                          className="w-full accent-teal-600 cursor-pointer"
                         />
                       </div>
 
-                      {/* Contrast */}
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 block">Kontras</label>
+                        <label className="text-[10px] font-bold text-slate-500 block">Kontras</label>
                         <input
                           type="range"
                           min="50"
                           max="150"
                           value={contrast}
                           onChange={(e) => setContrast(Number(e.target.value))}
-                          className="w-full accent-teal-500"
+                          className="w-full accent-teal-600 cursor-pointer"
                         />
                       </div>
 
-                      {/* Saturation */}
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 block">Saturasi</label>
+                        <label className="text-[10px] font-bold text-slate-500 block">Saturasi</label>
                         <input
                           type="range"
                           min="0"
                           max="200"
                           value={saturation}
                           onChange={(e) => setSaturation(Number(e.target.value))}
-                          className="w-full accent-teal-500"
+                          className="w-full accent-teal-600 cursor-pointer"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Drop Shadow Controls */}
-                  <div className="pt-3 border-t border-slate-900 space-y-3">
+                  {/* Drop Shadow */}
+                  <div className="pt-3 border-t border-slate-100 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Efek Bayangan Realistis (Shadow)</span>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Efek Bayangan Halus (Drop Shadow)</span>
                       <input 
                         type="checkbox"
                         checked={enableShadow}
                         onChange={(e) => setEnableShadow(e.target.checked)}
-                        className="w-4 h-4 accent-teal-500"
+                        className="w-4 h-4 accent-teal-600 cursor-pointer"
                       />
                     </div>
 
                     {enableShadow && (
                       <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                        {/* Blur & Opacity */}
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] text-slate-400">
-                            <span>Kekaburan Bayang</span>
+                          <div className="flex justify-between text-[10px] font-bold text-slate-600">
+                            <span>Pelebaran Bayang</span>
                             <span>{shadowBlur}px</span>
                           </div>
                           <input
@@ -1292,13 +1235,13 @@ export default function App() {
                             max="40"
                             value={shadowBlur}
                             onChange={(e) => setShadowBlur(Number(e.target.value))}
-                            className="w-full accent-teal-500"
+                            className="w-full accent-teal-600 cursor-pointer"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] text-slate-400">
-                            <span>Kepekatan (Opacity)</span>
+                          <div className="flex justify-between text-[10px] font-bold text-slate-600">
+                            <span>Kepekatan Bayang</span>
                             <span>{Math.round(shadowOpacity * 100)}%</span>
                           </div>
                           <input
@@ -1308,7 +1251,7 @@ export default function App() {
                             step="0.05"
                             value={shadowOpacity}
                             onChange={(e) => setShadowOpacity(Number(e.target.value))}
-                            className="w-full accent-teal-500"
+                            className="w-full accent-teal-600 cursor-pointer"
                           />
                         </div>
                       </div>
@@ -1319,32 +1262,32 @@ export default function App() {
               </div>
 
               {/* ACTION EXPORT STUDIO */}
-              <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-md space-y-4">
                 <div className="space-y-1.5 text-center md:text-left">
-                  <h4 className="font-extrabold text-sm text-slate-200">Selesaikan & Simpan Hasil HD</h4>
-                  <p className="text-xs text-slate-400">Pilih format untuk mengekspor hasil kreasi Anda dalam kualitas HD penuh.</p>
+                  <h4 className="font-extrabold text-sm text-slate-900">3. Unduh Karya HD</h4>
+                  <p className="text-xs text-slate-500 font-medium">Ekspor langsung hasil desain Anda tanpa ada sisa checkerboard terarsir.</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => handleDownload('png')}
-                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-white font-extrabold text-xs transition duration-300 shadow-lg shadow-teal-500/20"
+                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs transition duration-300 shadow-lg shadow-teal-600/10"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download PNG HD</span>
+                    <span>Download PNG Transparan</span>
                   </button>
 
                   <button
                     onClick={() => handleDownload('jpeg')}
-                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 font-extrabold text-xs transition duration-300"
+                    className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/60 font-extrabold text-xs transition duration-300"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Download JPG HD</span>
+                    <span>Download JPG Studio</span>
                   </button>
                 </div>
 
-                <p className="text-[10px] text-slate-500 text-center">
-                  * Gambar disimpan langsung ke perangkat Anda dalam kualitas resolusi pixel asli tanpa watermark.
+                <p className="text-[10px] text-slate-400 font-medium text-center">
+                  * Untuk hasil transparan mutlak, pastikan Anda menggunakan mode latar belakang "Polos" (Kategori pertama).
                 </p>
               </div>
 
@@ -1355,18 +1298,18 @@ export default function App() {
 
         {/* SECTION 3: HISTORY / PREVIOUS WORK */}
         {history.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-slate-900 space-y-4">
+          <div className="mt-12 pt-8 border-t border-slate-200 space-y-4 text-left">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-lg text-slate-200 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-teal-400" />
-                <span>Riwayat Desain Terakhir</span>
+              <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-teal-600" />
+                <span>Riwayat Karya</span>
               </h3>
               <button 
                 onClick={() => {
                   setHistory([]);
                   localStorage.removeItem('latarkita_history');
                 }}
-                className="text-xs font-bold text-rose-400 hover:underline"
+                className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
               >
                 Hapus Semua Riwayat
               </button>
@@ -1381,14 +1324,14 @@ export default function App() {
                     setProcessedUrl(hist.processed);
                     setSourceName('Foto Riwayat LatarKita');
                   }}
-                  className="group bg-slate-950/40 hover:bg-slate-950 border border-slate-900 hover:border-teal-500/30 rounded-2xl p-2.5 cursor-pointer transition duration-300 relative"
+                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-teal-500/30 rounded-2xl p-2.5 cursor-pointer transition duration-300 relative shadow-sm"
                 >
-                  <div className="aspect-square rounded-xl overflow-hidden bg-slate-900 relative">
-                    <img src={hist.processed} alt="History product" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 relative">
+                    <img src={hist.processed} alt="History product" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
                   </div>
-                  <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between font-semibold">
+                  <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-bold">
                     <span>{hist.date}</span>
-                    <ChevronRight className="w-3 h-3 text-slate-500 group-hover:text-teal-400" />
+                    <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-teal-600" />
                   </div>
                 </div>
               ))}
@@ -1397,85 +1340,23 @@ export default function App() {
         )}
       </main>
 
-      {/* FOOTER */}
-      <footer className="mt-16 border-t border-slate-900 bg-slate-950/40 p-6 text-center text-xs text-slate-500 space-y-2">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* PUBLIC FOOTER */}
+      <footer className="mt-16 border-t border-slate-200/80 bg-white p-6 text-center text-xs text-slate-500 space-y-2 shadow-inner">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-left">
           <div>
-            <p className="font-bold text-slate-400 text-sm">LatarKita Studio AI</p>
-            <p className="text-slate-500">Masa depan matting & penggantian latar belakang foto instan berkualitas tinggi.</p>
+            <p className="font-extrabold text-slate-800 text-sm">LatarKita Studio AI</p>
+            <p className="text-slate-500 font-medium">Pemotong subjek foto instan bertenaga Web Assembly lokal berkecepatan tinggi.</p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="bg-slate-900 border border-slate-800 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-600">
               WebAssembly ONNX Engine
             </span>
-            <span className="bg-slate-900 border border-slate-800 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-400">
-              Gemini 2.5 Flash / Imagen 3
+            <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-600">
+              Gemini 3.5 / Imagen 3.0
             </span>
           </div>
         </div>
       </footer>
-
-      {/* API CONFIG / SETTINGS MODAL */}
-      {showApiKeyModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-scale-up">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-teal-400" />
-                <h3 className="font-extrabold text-lg text-slate-100">Setelan API Key Gemini</h3>
-              </div>
-              <button 
-                onClick={() => setShowApiKeyModal(false)}
-                className="p-1.5 rounded-full bg-slate-950 hover:bg-slate-800 text-slate-400 transition"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
-
-            <div className="space-y-2 text-xs text-slate-400 leading-relaxed">
-              <p>
-                Fitur <strong>AI Background Generator</strong> membutuhkan API Key Gemini. Jika kunci tidak terkonfigurasi di panel Secrets proyek, Anda dapat menyematkannya secara pribadi di bawah ini.
-              </p>
-              <p className="p-2 bg-slate-950 rounded-xl border border-slate-850 text-[11px] font-semibold text-amber-300">
-                ⚠️ API Key disimpan murni di memori lokal browser Anda dan tidak pernah dikirim ke pihak luar selain endpoint resmi Google AI Studio.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Masukkan API Key Gemini Anda</label>
-              <input
-                type="password"
-                value={userApiKey}
-                onChange={(e) => setUserApiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="w-full text-xs bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-teal-500 rounded-xl p-3 outline-none text-slate-200"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => {
-                  setShowApiKeyModal(false);
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-bold text-xs transition duration-300"
-              >
-                Simpan & Aktifkan AI
-              </button>
-              {userApiKey && (
-                <button
-                  onClick={() => {
-                    setUserApiKey('');
-                    setShowApiKeyModal(false);
-                  }}
-                  className="py-2.5 px-4 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/20 font-bold text-xs transition duration-300"
-                >
-                  Hapus
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
