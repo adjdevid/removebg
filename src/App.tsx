@@ -15,6 +15,11 @@ import {
   Palette, 
   HelpCircle, 
   ChevronRight,
+  ChevronDown,
+  ShieldCheck,
+  Zap,
+  ShoppingBag,
+  UserCheck,
   SlidersHorizontal,
   FileImage,
   Undo,
@@ -157,23 +162,12 @@ export default function App() {
   // Notification banner
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
 
-  // Local History
-  const [history, setHistory] = useState<Array<{ id: string; original: string; processed: string; date: string }>>([]);
+  // FAQ Accordion state for interactive SEO section
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
-
-  // Initialize and check configuration
-  useEffect(() => {
-    // Load history from local storage
-    const savedHistory = localStorage.getItem('latarkita_history');
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) {}
-    }
-  }, []);
 
   // Update Canvas whenever layout parameters change
   useEffect(() => {
@@ -410,17 +404,6 @@ export default function App() {
       setProcessedUrl(resultUrl);
       setProgressPercent(100);
       setIsProcessing(false);
-
-      const newHistoryItem = {
-        id: Date.now().toString(),
-        original: originalUrl,
-        processed: resultUrl,
-        date: new Date().toLocaleDateString('id-ID', { hour: '2-digit', minute: '2-digit' })
-      };
-
-      const updatedHistory = [newHistoryItem, ...history].slice(0, 10);
-      setHistory(updatedHistory);
-      localStorage.setItem('latarkita_history', JSON.stringify(updatedHistory));
     } catch (err: any) {
       console.error('Error removing background:', err);
       setIsProcessing(false);
@@ -1300,66 +1283,176 @@ export default function App() {
           </div>
         )}
 
-        {/* SECTION 3: HISTORY / PREVIOUS WORK */}
-        {history.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-slate-200 space-y-4 text-left">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-teal-600" />
-                <span>Riwayat Karya</span>
-              </h3>
-              <button 
-                onClick={() => {
-                  setHistory([]);
-                  localStorage.removeItem('latarkita_history');
-                }}
-                className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
-              >
-                Hapus Semua Riwayat
-              </button>
+        {/* SEO INFORMATIONAL SECTION & FAQ */}
+        <section aria-label="Informasi dan Panduan LatarKita" className="mt-16 pt-12 border-t border-slate-200/90 text-left space-y-12">
+          
+          {/* 1. Value Proposition Features */}
+          <div className="space-y-6">
+            <div className="text-center max-w-2xl mx-auto space-y-2">
+              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Mengapa Memilih <span className="text-teal-600">LatarKita</span>?
+              </h2>
+              <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed">
+                Platform penghapus latar belakang foto berbasis AI tercanggih untuk hasil potongan setajam studio tanpa kompromi.
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-              {history.map((hist) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-2.5 shadow-xs hover:border-teal-500/40 transition">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">Pemotongan Kilat 1 Detik</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Tak perlu seleksi manual atau pen tool. Cukup unggah foto dan latar belakang terhapus otomatis sekejap mata.
+                </p>
+              </div>
+
+              <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-2.5 shadow-xs hover:border-teal-500/40 transition">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">Studio AI Background (Flux)</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Tulis deskripsi studio impian Anda, dan model Pollinations Flux akan melukis latar belakang komersial beresolusi tinggi.
+                </p>
+              </div>
+
+              <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-2.5 shadow-xs hover:border-teal-500/40 transition">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">Potongan Presisi HD & Rambut</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Deteksi detail lekuk halus, helai rambut tipis, bulu, dan tepi produk kaca tanpa garis tepi kasar yang cacat.
+                </p>
+              </div>
+
+              <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-2.5 shadow-xs hover:border-teal-500/40 transition">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <FileImage className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-sm text-slate-900">PNG Transparan Tanpa Watermark</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Hasil unduhan 100% transparan berkualitas tinggi tanpa watermark, langsung siap untuk marketplace atau desain Canva.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Use Cases */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 md:p-8 rounded-3xl space-y-6 shadow-md">
+            <div className="max-w-2xl space-y-1.5">
+              <h2 className="text-xl md:text-2xl font-bold tracking-tight text-white">
+                Satu Aplikasi untuk Beragam Kebutuhan Visual
+              </h2>
+              <p className="text-xs text-slate-300">
+                Tingkatkan konversi penjualan dan estetika foto Anda dengan kepraktisan LatarKita Studio.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-teal-400 font-bold text-xs">
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Katalog E-Commerce</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Foto produk Shopee, Tokopedia, dan TikTok Shop dengan latar putih bersih atau podium kayu modern.
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-teal-400 font-bold text-xs">
+                  <UserCheck className="w-4 h-4" />
+                  <span>Pas Foto KTP & Ijazah</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Ganti background warna merah atau biru secara presisi untuk keperluan berkas lamaran, visa, dan SIM.
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-teal-400 font-bold text-xs">
+                  <Palette className="w-4 h-4" />
+                  <span>Desain Kreatif & Medsos</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Pembuatan avatar profil LinkedIn, poster event, stiker WhatsApp, dan thumbnail YouTube memukau.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. FAQ Accordion */}
+          <div className="max-w-3xl mx-auto w-full space-y-4">
+            <div className="text-center space-y-1.5">
+              <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 flex items-center justify-center gap-2">
+                <HelpCircle className="w-5 h-5 text-teal-600" />
+                <span>Pertanyaan yang Sering Diajukan (FAQ)</span>
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">Semua hal yang perlu Anda ketahui tentang layanan LatarKita</p>
+            </div>
+
+            <div className="space-y-2.5 pt-2">
+              {[
+                {
+                  q: "Apakah LatarKita benar-benar gratis tanpa watermark?",
+                  a: "Ya! Anda dapat menghapus latar belakang gambar dan mengunduh berkas format PNG transparan secara gratis tanpa watermark apa pun."
+                },
+                {
+                  q: "Berapa lama waktu proses pemotongan foto?",
+                  a: "Hanya butuh waktu sekitar 1 detik. Server cloud AI LatarKita memproses gambar dengan akselerasi tinggi sehingga hasil potongan muncul seketika."
+                },
+                {
+                  q: "Bagaimana cara membuat latar belakang studio dengan AI?",
+                  a: "Setelah foto terpotong, klik tab 'Studio AI' di panel kanan, ketik suasana yang diinginkan (misal: 'Meja kafe kayu estetik dengan cahaya sore'), lalu klik 'Buat Background AI'. Model Pollinations Flux akan melukisnya khusus untuk Anda."
+                },
+                {
+                  q: "Apakah kualitas foto hasil unduhan tetap tajam (HD)?",
+                  a: "Tentu. Sistem LatarKita mempertahankan dimensi dan ketajaman subjek asli Anda sehingga aman dicetak maupun diunggah ke platform e-commerce."
+                }
+              ].map((faq, idx) => (
                 <div 
-                  key={hist.id} 
-                  onClick={() => {
-                    setSourceImage(hist.original);
-                    setProcessedUrl(hist.processed);
-                    setSourceName('Foto Riwayat LatarKita');
-                  }}
-                  className="group bg-white hover:bg-slate-50 border border-slate-200 hover:border-teal-500/30 rounded-2xl p-2.5 cursor-pointer transition duration-300 relative shadow-sm"
+                  key={idx}
+                  className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all duration-200 shadow-xs"
                 >
-                  <div className="aspect-square rounded-xl overflow-hidden bg-slate-50 relative">
-                    <img src={hist.processed} alt="History product" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
-                  </div>
-                  <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between font-bold">
-                    <span>{hist.date}</span>
-                    <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-teal-600" />
-                  </div>
+                  <button
+                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                    className="w-full flex items-center justify-between p-4 text-left font-bold text-xs md:text-sm text-slate-800 hover:text-teal-600 cursor-pointer transition-colors"
+                  >
+                    <span>{faq.q}</span>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${openFaq === idx ? 'rotate-180 text-teal-600' : ''}`} />
+                  </button>
+                  {openFaq === idx && (
+                    <div className="px-4 pb-4 pt-1 text-xs text-slate-600 leading-relaxed border-t border-slate-100 bg-slate-50/50">
+                      {faq.a}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
-        )}
+
+        </section>
       </main>
 
       {/* PUBLIC FOOTER */}
-      <footer className="mt-16 border-t border-slate-200/80 bg-white p-6 text-center text-xs text-slate-500 shadow-inner">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-left">
-          <div className="flex items-center gap-3">
+      <footer className="mt-16 border-t border-slate-200/80 bg-white p-6 text-xs text-slate-500 shadow-inner">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-5">
+          <div className="flex items-center gap-3 text-left">
             <img 
               src="/logo.png" 
               alt="LatarKita" 
-              className="w-8 h-8 object-contain rounded-lg border border-slate-100 bg-white shadow-xs" 
+              className="w-9 h-9 object-contain rounded-xl border border-slate-100 bg-white shadow-xs shrink-0" 
             />
             <div>
               <p className="font-extrabold text-slate-800 text-sm">LatarKita Studio AI</p>
-              <p className="text-slate-500 font-medium">Pemotong subjek foto instan kualitas HD bertenaga Remove.bg AI & Pollinations.ai.</p>
+              <p className="text-slate-500 font-medium text-[11px]">Pemotong subjek foto instan kualitas HD bertenaga Remove.bg AI & Pollinations.ai.</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 md:gap-4">
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 sm:gap-4">
             <div className="flex items-center gap-2">
               <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1 rounded-full text-slate-600">
                 Remove.bg Cloud
@@ -1368,12 +1461,37 @@ export default function App() {
                 Pollinations Flux
               </span>
             </div>
+            
             <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
-            <img 
-              src="/footer-logo.png" 
-              alt="LatarKita" 
-              className="h-6 md:h-7 w-auto object-contain opacity-85 hover:opacity-100 transition-opacity" 
-            />
+
+            <div className="flex items-center gap-3 sm:gap-4">
+              <a 
+                href="https://codqy.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                title="Kunjungi Codqy"
+                className="inline-flex items-center hover:opacity-100 transition-opacity"
+              >
+                <img 
+                  src="/footer-logo.png" 
+                  alt="LatarKita by Codqy" 
+                  className="h-6 md:h-7 w-auto object-contain opacity-85 hover:opacity-100 transition-opacity" 
+                />
+              </a>
+              <a 
+                href="https://adjdev.web.id" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                title="Kunjungi ADJ Dev"
+                className="inline-flex items-center hover:opacity-100 transition-opacity"
+              >
+                <img 
+                  src="/partner-logo.png" 
+                  alt="ADJ Dev" 
+                  className="h-5 md:h-6 w-auto max-w-[150px] sm:max-w-[180px] object-contain opacity-85 hover:opacity-100 transition-opacity" 
+                />
+              </a>
+            </div>
           </div>
         </div>
       </footer>
