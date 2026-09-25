@@ -555,9 +555,11 @@ export default function App() {
       <header className="border-b border-slate-200/85 bg-white/95 backdrop-blur-md sticky top-0 z-50 px-4 py-3.5 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-600 shadow-md shadow-teal-600/10 text-white font-extrabold text-xl">
-              LK
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="LatarKita" 
+              className="w-10 h-10 object-contain rounded-xl shadow-sm border border-slate-100 bg-white" 
+            />
             <div>
               <span className="font-extrabold text-lg tracking-tight text-slate-900 flex items-center gap-1.5">
                 LatarKita <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-teal-50 text-teal-600 border border-teal-200/40">PRO HD</span>
@@ -1345,9 +1347,16 @@ export default function App() {
       {/* PUBLIC FOOTER */}
       <footer className="mt-16 border-t border-slate-200/80 bg-white p-6 text-center text-xs text-slate-500 space-y-2 shadow-inner">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-left">
-          <div>
-            <p className="font-extrabold text-slate-800 text-sm">LatarKita Studio AI</p>
-            <p className="text-slate-500 font-medium">Pemotong subjek foto instan kualitas HD bertenaga Remove.bg AI.</p>
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logo.png" 
+              alt="LatarKita" 
+              className="w-8 h-8 object-contain rounded-lg border border-slate-100 bg-white" 
+            />
+            <div>
+              <p className="font-extrabold text-slate-800 text-sm">LatarKita Studio AI</p>
+              <p className="text-slate-500 font-medium">Pemotong subjek foto instan kualitas HD bertenaga Remove.bg AI.</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-600">
