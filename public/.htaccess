@@ -1,0 +1,61 @@
+# ==============================================================================
+# LatarKita AI - Hostinger Business Hosting (LiteSpeed / Apache) Configuration
+# ==============================================================================
+
+# 1. Single Page Application (SPA) Routing
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# 2. Correct MIME Types for WebAssembly & AI Neural Network Files
+<IfModule mod_mime.c>
+  AddType application/wasm .wasm
+  AddType application/octet-stream .onnx .bin
+  AddType application/json .json
+  AddType image/svg+xml .svg
+  AddType font/woff2 .woff2
+</IfModule>
+
+# 3. Super Cache Headers (Once downloaded, user NEVER downloads 80MB AI model again!)
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+  ExpiresByType application/wasm "access plus 1 year"
+  ExpiresByType application/octet-stream "access plus 1 year"
+  ExpiresByType application/json "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Enable CORS for models and assets
+  Header set Access-Control-Allow-Origin "*"
+
+  # 1-Year Immutable Caching for AI Models & WASM (Permanent in user browser cache)
+  <FilesMatch "\.(wasm|onnx|bin)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # 1-Year Immutable Caching for Vite hashed assets
+  <FilesMatch "\.(js|css|woff2|svg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # Never cache index.html so users always get your newest updates
+  <FilesMatch "index\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+# 4. Gzip / Brotli Compression for Fast Asset Delivery
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json application/wasm
+</IfModule>

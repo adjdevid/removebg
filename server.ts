@@ -45,8 +45,66 @@ if (apiKey) {
 app.get('/api/config', (req: Request, res: Response) => {
   res.json({
     hasApiKey: !!apiKey || !!req.headers['x-api-key'],
+    hasRemoveBgKey: !!process.env.REMOVE_BG_API_KEY,
     appName: "LatarKita AI"
   });
+});
+
+// API: Server-side Remove.bg Background Removal using REMOVE_BG_API_KEY from environment
+app.post('/api/remove-bg', async (req: Request, res: Response) => {
+  const { image } = req.body;
+
+  if (!image) {
+    res.status(400).json({ error: 'Data gambar wajib disertakan.' });
+    return;
+  }
+
+  const rmbgKey = process.env.REMOVE_BG_API_KEY;
+  if (!rmbgKey) {
+    res.status(400).json({
+      error: 'NO_KEY',
+      message: 'REMOVE_BG_API_KEY belum dikonfigurasi di file environment (.env) server.'
+    });
+    return;
+  }
+
+  try {
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+      method: 'POST',
+      headers: {
+        'X-Api-Key': rmbgKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        image_file_b64: base64Data,
+        size: 'auto'
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let detailMsg = errorText;
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.errors && parsed.errors.length > 0) {
+          detailMsg = parsed.errors.map((e: any) => e.title).join(', ');
+        }
+      } catch (e) {}
+      throw new Error(`Remove.bg error (${response.status}): ${detailMsg}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    res.json({
+      success: true,
+      imageUrl: `data:image/png;base64,${base64}`,
+      engine: 'removebg'
+    });
+  } catch (err: any) {
+    console.error('Remove.bg error:', err);
+    res.status(500).json({ error: err.message || 'Gagal memproses dengan Remove.bg' });
+  }
 });
 
 // API: Generate background image using Gemini Image model
@@ -192,18 +250,49 @@ Setiap ide harus ringkas, maksimal 12 kata, berformat langsung deskripsi adegan 
       .filter(s => s.length > 0)
       .slice(0, 4);
 
-    res.json({ suggestions });
-  } catch (error) {
-    console.error('Error suggesting prompts:', error);
-    res.json({
-      suggestions: [
-        "Studio profesional modern dengan pencahayaan softbox minimalis",
-        "Meja kayu rustic hangat di kafe estetik sore hari dengan bokeh lembut",
-        "Latar belakang marmer putih mewah dengan bayangan tanaman tropis",
-        "Dinding beton industrial abu-abu dengan pencahayaan dramatis"
-      ]
-    });
+    if (suggestions.length > 0) {
+      res.json({ suggestions });
+      return;
+    }
+  } catch (error: any) {
+    // Graceful fallback without dumping 429 quota errors into server logs
+    if (error?.status === 'RESOURCE_EXHAUSTED' || error?.message?.includes('429') || error?.message?.includes('Quota exceeded')) {
+      console.info('Catatan: Kuota Gemini sedang padat, menggunakan saran template kurasi profesional.');
+    } else {
+      console.warn('Catatan prompt Gemini:', error?.message || error);
+    }
   }
+
+  // Smart contextual fallback based on category
+  const categoryPrompts: Record<string, string[]> = {
+    'Produk': [
+      "Studio podium minimalis elegan dengan pencahayaan softbox lembut pastel",
+      "Meja marmer putih mewah dengan bayangan dedaunan palem tropis",
+      "Alas kayu jati alami di kafe estetik dengan latar bokeh hangat",
+      "Dinding semen ekspos industrial modern dengan pencahayaan dramatis"
+    ],
+    'Orang': [
+      "Studio foto profesional abu-abu netral dengan pencahayaan rim light",
+      "Kafe bernuansa hangat dengan jendela kaca besar dan cahaya sore",
+      "Latar perkotaan modern estetik luar ruangan dengan bokeh lembut",
+      "Interior kantor minimalis modern bersih dan profesional"
+    ],
+    'Makanan': [
+      "Meja marmer dapur estetik dengan taburan rempah dan pencahayaan pagi",
+      "Meja kayu pedesaan dengan piring keramik dan tanaman hijau segar",
+      "Restoran fine dining mewah dengan pencahayaan lilin dramatis",
+      "Kafe brunch cerah dengan sinar matahari alami menerpa meja"
+    ]
+  };
+
+  const fallback = categoryPrompts[category as string] || [
+    "Studio profesional modern dengan pencahayaan softbox minimalis",
+    "Meja kayu rustic hangat di kafe estetik sore hari dengan bokeh lembut",
+    "Latar belakang marmer putih mewah dengan bayangan tanaman tropis",
+    "Dinding beton industrial abu-abu dengan pencahayaan dramatis"
+  ];
+
+  res.json({ suggestions: fallback });
 });
 
 // Handle React routing, return all other requests to React app
