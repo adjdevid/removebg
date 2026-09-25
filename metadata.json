@@ -1,0 +1,6 @@
+{
+  "name": "LatarKita - Penghapus Background Foto HD & AI Studio",
+  "description": "Aplikasi penghapus background foto otomatis instan dengan kualitas HD, didukung oleh AI background generator untuk mengganti latar belakang foto Anda secara kreatif.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
