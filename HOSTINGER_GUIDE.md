@@ -13,12 +13,13 @@ Aplikasi kini menggunakan **Satu Mesin Pemotong: Remove.bg Cloud AI**, dengan ku
 ---
 
 ## 🔑 Konfigurasi Environment Variable:
-Tambahkan baris berikut ke file `.env` di server Anda:
+Tambahkan baris berikut ke file `.env` di server Anda (atau di Environment Variables dashboard Vercel / Hostinger):
 ```env
 REMOVE_BG_API_KEY="kunci_api_remove_bg_anda"
+POLLINATIONS_API_KEY="kunci_api_pollinations_ai_anda"
 GEMINI_API_KEY="kunci_api_gemini_anda"
 ```
-*(Dapatkan kunci gratis Remove.bg dengan kuota 50 foto per bulan di [remove.bg/api](https://www.remove.bg/api)).*
+*(Dapatkan kunci Remove.bg di [remove.bg/api](https://www.remove.bg/api), dan kunci Pollinations.ai di [enter.pollinations.ai](https://enter.pollinations.ai)).*
 
 ---
 

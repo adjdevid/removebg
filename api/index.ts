@@ -37,6 +37,7 @@ app.get(['/api/config', '/config'], (req: Request, res: Response) => {
   res.json({
     hasApiKey: !!apiKey || !!req.headers['x-api-key'],
     hasRemoveBgKey: !!process.env.REMOVE_BG_API_KEY,
+    hasPollinationsKey: !!(process.env.POLLINATIONS_API_KEY || process.env.POLLINATION_API_KEY || process.env.POLLINATIONS_KEY),
     appName: "LatarKita AI"
   });
 });
@@ -98,93 +99,118 @@ app.post(['/api/remove-bg', '/remove-bg'], async (req: Request, res: Response) =
   }
 });
 
-// API: Generate background image using Gemini Image model
+// API: Generate background image using Pollinations.ai (Flux) with POLLINATIONS_API_KEY from environment
 app.post(['/api/generate-bg', '/generate-bg'], async (req: Request, res: Response) => {
   const { prompt, aspectRatio = '1:1', userApiKey } = req.body;
 
   if (!prompt) {
-    res.status(400).json({ error: 'Prompt is required.' });
+    res.status(400).json({ error: 'Deskripsi prompt latar belakang wajib diisi.' });
     return;
   }
 
-  // Determine client to use (server-side configured key or user-provided header key)
-  let activeAi = ai;
-  const requestKey = userApiKey || req.headers['x-api-key'] || apiKey;
+  const pollinationsKey = userApiKey || 
+    process.env.POLLINATIONS_API_KEY || 
+    process.env.POLLINATION_API_KEY || 
+    process.env.POLLINATIONS_KEY || 
+    '';
 
-  if (!activeAi && requestKey) {
-    try {
-      activeAi = new GoogleGenAI({
-        apiKey: requestKey as string,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          },
-        },
-      });
-    } catch (e) {
-      res.status(500).json({ error: 'Failed to initialize Gemini with the provided API Key.' });
-      return;
-    }
+  // Map aspect ratio to optimal image resolutions for Pollinations Flux
+  let width = 1024;
+  let height = 1024;
+  if (aspectRatio === '16:9') {
+    width = 1280;
+    height = 720;
+  } else if (aspectRatio === '9:16') {
+    width = 720;
+    height = 1280;
+  } else if (aspectRatio === '4:3') {
+    width = 1024;
+    height = 768;
+  } else if (aspectRatio === '3:4') {
+    width = 768;
+    height = 1024;
   }
 
-  if (!activeAi) {
-    res.status(400).json({ 
-      error: 'API Key is missing. Silakan masukkan API Key Anda di pengaturan atau pastikan rahasia sistem dikonfigurasi.' 
-    });
-    return;
-  }
+  // Enhanced prompt to ensure a clean studio backdrop without random people or unwanted artifacts
+  const enhancedPrompt = `${prompt}, commercial product photography studio background, professional lighting, photorealistic, 8k, ultra detailed, clean backplate, empty scene, no people`;
+  const seed = Math.floor(Math.random() * 100000000);
 
   try {
-    console.log(`Generating image for prompt: "${prompt}" with aspect ratio: ${aspectRatio}`);
+    console.log(`[Pollinations.ai] Generating background with prompt: "${prompt}", size: ${width}x${height}`);
+
+    const primaryUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&model=flux&seed=${seed}&nologo=true`;
     
-    // Using gemini-3.1-flash-lite-image as the high-speed standard image generator
-    const response = await activeAi.models.generateContent({
-      model: 'gemini-3.1-flash-lite-image',
-      contents: {
-        parts: [
-          {
-            text: `${prompt}, high resolution, professional photography studio lighting, photorealistic, 8k, commercially usable background backplate`,
-          },
-        ],
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio as any,
-        },
-      },
+    const fetchHeaders: Record<string, string> = {
+      'Accept': 'image/*'
+    };
+    if (pollinationsKey) {
+      fetchHeaders['Authorization'] = `Bearer ${pollinationsKey}`;
+    }
+
+    let response = await fetch(primaryUrl, {
+      method: 'GET',
+      headers: fetchHeaders
     });
 
-    if (!response.candidates?.[0]?.content?.parts) {
-      throw new Error('No content returned from Gemini model.');
+    // Fallback to image.pollinations.ai endpoint if needed
+    if (!response.ok) {
+      const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&model=flux&seed=${seed}&nologo=true${pollinationsKey ? `&key=${encodeURIComponent(pollinationsKey)}` : ''}`;
+      console.log(`[Pollinations.ai] Trying alternative endpoint...`);
+      response = await fetch(fallbackUrl, {
+        method: 'GET',
+        headers: fetchHeaders
+      });
     }
 
-    // Iterate through parts to find the image part
-    let base64Image = '';
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        base64Image = part.inlineData.data;
-        break;
-      }
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`Pollinations API error (${response.status}): ${errorText || 'Gagal menghasilkan gambar dari Pollinations.ai'}`);
     }
 
-    if (!base64Image) {
-      let textResponse = '';
-      for (const part of response.candidates[0].content.parts) {
-        if (part.text) {
-          textResponse += part.text;
-        }
-      }
-      throw new Error(textResponse || 'Model did not return any image data.');
-    }
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
 
     res.json({
       success: true,
-      imageUrl: `data:image/png;base64,${base64Image}`,
+      imageUrl: `data:${contentType};base64,${base64}`,
+      engine: 'pollinations.ai',
+      model: 'flux'
     });
   } catch (error: any) {
-    console.error('Error in background generation:', error);
+    console.error('Error generating background with Pollinations.ai:', error);
+
+    // Optional Gemini fallback if GEMINI_API_KEY is available
+    if (ai) {
+      try {
+        console.log('Attempting Gemini fallback for background generation...');
+        const geminiRes = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite-image',
+          contents: {
+            parts: [{ text: `${prompt}, commercial studio background, 8k, photorealistic` }]
+          },
+          config: {
+            imageConfig: {
+              aspectRatio: aspectRatio as any
+            }
+          }
+        });
+        const imgPart = geminiRes.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (imgPart?.inlineData?.data) {
+          res.json({
+            success: true,
+            imageUrl: `data:image/png;base64,${imgPart.inlineData.data}`,
+            engine: 'gemini-fallback'
+          });
+          return;
+        }
+      } catch (geminiErr) {
+        console.warn('Gemini fallback failed:', geminiErr);
+      }
+    }
+
     res.status(500).json({ 
-      error: error.message || 'Gagal menghasilkan latar belakang AI. Silakan coba deskripsi lain atau gunakan API Key yang valid.' 
+      error: error.message || 'Gagal menghasilkan latar belakang AI dengan Pollinations.ai. Pastikan POLLINATIONS_API_KEY telah diisi di file .env.' 
     });
   }
 });

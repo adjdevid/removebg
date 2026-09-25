@@ -1007,10 +1007,10 @@ export default function App() {
                       <div className="bg-gradient-to-tr from-teal-50 to-indigo-50 border border-teal-100 p-3.5 rounded-2xl space-y-2">
                         <div className="flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-teal-600" />
-                          <span className="text-xs font-bold text-slate-900">AI Background Generator</span>
+                          <span className="text-xs font-bold text-slate-900">AI Background Generator (Pollinations.ai)</span>
                         </div>
                         <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
-                          Tulis deskripsi latar belakang profesional yang Anda inginkan, lalu klik tombol di bawah untuk melukisnya secara ajaib dengan AI.
+                          Tulis deskripsi latar belakang yang Anda inginkan, lalu Pollinations.ai (Flux) akan melukis latar belakang studio profesional secara otomatis.
                         </p>
                       </div>
 
@@ -1363,7 +1363,7 @@ export default function App() {
               Remove.bg Cloud Engine
             </span>
             <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-bold px-3 py-1.5 rounded-full text-slate-600">
-              Gemini Studio
+              Pollinations.ai Flux
             </span>
           </div>
         </div>
